@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wordpress-limit-job
+  namespace: {{ CLIENT_NAMESPACE }}
+spec:
+  # Ensure the job's pod is cleaned up after success
+  successfulJobsHistoryLimit: 0
+  template:
+    spec:
+      # We use a common utility image with kubectl installed to execute commands
+      containers:
+      - name: modifier
+        image: bitnami/kubectl:latest
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -e
+          WP_POD=""
+          NAMESPACE="{{ CLIENT_NAMESPACE }}"
+          echo "Waiting for WordPress pod in namespace $NAMESPACE to be ready..."
+          # Loop until a running WordPress pod is found
+          while [[ -z "$WP_POD" ]]; do
+            # Find a running pod with the label app=wordpress
+            WP_POD=$(kubectl get pods -n $NAMESPACE -l app=wordpress -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [[ -n "$WP_POD" ]]; then
+              STATUS=$(kubectl get pod "$WP_POD" -n $NAMESPACE -o jsonpath='{.status.phase}')
+              if [[ "$STATUS" == "Running" ]]; then
+                echo "WordPress Pod ($WP_POD) is Running. Proceeding with .htaccess modification."
+                break
+              fi
+            fi
+            echo "Still waiting for WordPress pod..."
+            sleep 5
+          done
+
+          # Execute the modification inside the running WordPress container
+          echo "Injecting high limits PHP configuration into $WP_POD/.htaccess..."
+          kubectl exec -n "$NAMESPACE" "$WP_POD" -- sh -c "
+              echo '# BEGIN Custom PHP Limits for Migration (2GB)' >> /var/www/html/.htaccess;
+              echo 'php_value upload_max_filesize 2048M' >> /var/www/html/.htaccess;
+              echo 'php_value post_max_size 2048M' >> /var/www/html/.htaccess;
+              echo 'php_value memory_limit 2048M' >> /var/www/html/.htaccess;
+              echo 'php_value max_execution_time 7200' >> /var/www/html/.htaccess;
+              echo 'php_value max_input_time 7200' >> /var/www/html/.htaccess;
+              echo '# END Custom PHP Limits for Migration' >> /var/www/html/.htaccess;
+              echo '.htaccess modification complete.'
+          "
+      restartPolicy: OnFailure
+      backoffLimit: 4
