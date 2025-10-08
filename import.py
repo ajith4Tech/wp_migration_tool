@@ -67,16 +67,44 @@ def install_plugin_via_search(page, wp_url):
     page.goto(f"{wp_url}/wp-admin/plugins.php")
     page.wait_for_load_state('networkidle', timeout=30000)
 
-        # Re-fetch the Deactivate link on the newly reloaded page
-        plugin_row = page.locator(f'tr[data-slug="{PLUGIN_SLUG}"]')
-        deactivate_link = plugin_row.locator("a:has-text('Deactivate')")
+    # Re-fetch the Deactivate link on the newly reloaded page
+    plugin_row = page.locator(f'tr[data-slug="{PLUGIN_SLUG}"]')
+    deactivate_link = plugin_row.locator("a:has-text('Deactivate')")
 
-        deactivate_link.wait_for(state="visible", timeout=30000)
-        print("   -> Plugin activated successfully.")
-        return True
+    deactivate_link.wait_for(state="visible", timeout=30000)
+    print("   -> Plugin activated successfully.")
+    return True
+
+def ensure_plugin_active(page, wp_url):
+    """Ensures the plugin is installed and active, handles all states safely."""
+    page.goto(f"{wp_url}/wp-admin/plugins.php")
+    page.wait_for_load_state('networkidle', timeout=30000)
     
-    # This state should be unreachable if the checks above were correct.
-    raise Exception("Plugin status could not be determined (neither Active nor Inactive link found).")
+    plugin_row = page.locator(f'tr[data-slug="{PLUGIN_SLUG}"]')
+    plugin_row.wait_for(timeout=30000)
+
+    deactivate_link = plugin_row.locator("a:has-text('Deactivate')")
+    if deactivate_link.is_visible():
+        print("   -> Plugin is already ACTIVE. Proceeding to import.")
+        return True
+
+    activate_link = plugin_row.locator("a:has-text('Activate')")
+    if activate_link.is_visible():
+        print("   -> Plugin is inactive. Activating now...")
+        activate_link.click()
+        for attempt in range(3):
+            try:
+                deactivate_link.wait_for(state="visible", timeout=10000)
+                print("   -> Plugin activated successfully.")
+                return True
+            except:
+                print(f"   -> Waiting for plugin activation... attempt {attempt+1}")
+                time.sleep(2)
+        raise Exception("Plugin activation failed after retries.")
+
+    print("   -> Plugin not installed. Installing...")
+    install_plugin_via_search(page, wp_url)
+    return True
 
 
 # --- MAIN IMPORT WORKFLOW ---

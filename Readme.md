@@ -1,48 +1,98 @@
-# WP Migration Automation Tool (EC2 Headless Script)
+# WordPress Migration Tool
 
-This Python script automates the complete **WordPress site backup and file transfer process** using **Playwright**. It logs into the WordPress admin interface, ensures the **All-in-One WP Migration** plugin is active, triggers a full export, and downloads the resulting `.wpress` file directly to a **site-specific folder** on the host (AWS EC2) server.
+Automated WordPress migration solution that handles the complete process from backup to deployment.
 
----
+## Overview
+
+This tool automates WordPress migration with three main components:
+
+1. **migrate.py** - Creates backup of source WordPress site
+2. **deploy-client.sh** - Deploys new WordPress instance on Kubernetes  
+3. **import.py** - Imports backup to target site with upload limit management
 
 ## Features
 
-- **Headless Automation:** Runs entirely without a GUI, ideal for servers or CI pipelines.  
-- **Robust Plugin Management:** Automatically checks for the plugin and activates or installs it if needed.  
-- **Site-Specific Storage:** Creates dedicated directories (`/home/ubuntu/.../wp_site_name/`) for organized backups.  
-- **Resilient Export Workflow:** Uses retry loops and explicit visibility waits to handle WordPress UI and AJAX timing issues reliably.
-
----
-
+- **Unified Workflow**: Single orchestrator script runs entire process
+- **Headless Automation**: Browser automation using Playwright
+- **Kubernetes Integration**: Automated K8s deployment
+- **Upload Limit Management**: Automatically handles large backup files
+- **Interactive Interface**: Guided setup with progress indicators  
 ## Prerequisites
 
-**Host Machine:** Ubuntu server (e.g., AWS EC2) with SSH access.  
-**Dependencies:** Python 3, pip, and Playwright installed on the host:
+- Python 3.12+ with virtual environment support
+- WSL (Windows Subsystem for Linux) for Windows users  
+- kubectl configured for your Kubernetes cluster
+- K8s cluster with appropriate permissions
+
+## Quick Start
+
+### Windows
 ```bash
-sudo apt install -y python3 python3-pip
-pip install playwright
-playwright install
-
+# Run the migration orchestrator
+run-migration.bat
 ```
 
-## Setup & Configuration
+### Linux/WSL
+```bash
+# Check environment first
+./check-prerequisites.sh
 
-#### Open migrate.py and update global variables
+# Run the orchestrator
+./wp-migration-orchestrator.sh
+```
 
+## Migration Workflow
 
-| Variable | Description     | Example                |
-| :-------- | :------- | :------------------------- |
-| `WP_URL` | `Full URL of the WordPress site` | `https://wp.t4gc.in` |
-| `USERNAME` | `WordPress Administrator username` | `wp_admin` |
-| `PASSWORD` | `WordPress Administrator password` | `wp_password` |
-| `BASE_EC2_DIR` | `Absolute path on EC2 where backups will be saved` | `"/home/ubuntu/backup-receiver/recieved_wp"` |
-## Usage
+### Phase 1: Source Site Backup
+- Interactive prompts for WordPress credentials
+- Automatic plugin installation/activation
+- Headless browser automation for backup creation
+- Organized file storage
 
-``` bash
-python3 migrate.py
+### Phase 2: Kubernetes Deployment  
+- Interactive namespace and database configuration
+- MySQL and WordPress deployment
+- Service and networking setup
+
+### Phase 3: Upload Limit Management
+- Automatic .htaccess modification (2M → 512M)
+- Pod-level file system access via kubectl
+
+### Phase 4: Backup Import
+- Plugin installation on target WordPress
+- Large file upload handling
+- Database and file restoration
+
+### Phase 5: Finalization
+- Upload limit restoration (512M → 2M)
+- Configuration cleanup
+
+## File Structure
 
 ```
-## Authors
+wp_migration_tool/
+├── wp-migration-orchestrator.sh     # Main orchestrator
+├── migrate.py                        # Source backup automation
+├── import.py                         # Target import automation
+├── deploy-client.sh                  # Kubernetes deployment
+├── check-prerequisites.sh            # Environment validation
+├── run-migration.bat                 # Windows wrapper
+├── templates/                        # Kubernetes YAML templates
+└── wp_migration_venv/                # Python virtual environment
+```
 
-- [@ajith4Tech](https://www.github.com/ajith4Tech)
+## Troubleshooting
+
+### Python/Playwright Issues
+```bash
+rm -rf wp_migration_venv
+./check-prerequisites.sh
+```
+
+### Kubernetes Issues
+```bash
+kubectl cluster-info
+kubectl get nodes
+```
 
 

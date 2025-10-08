@@ -1,1 +1,42 @@
+# WordPress Migration Tool - Private Project
+
+# Python
 __pycache__/
+*.py[cod]
+.Python
+
+# Virtual Environment
+wp_migration_venv/
+venv/
+.venv/
+
+# Environment Variables & Secrets
+.env
+*.env
+config.json
+secrets.json
+credentials.json
+
+# Temporary Files
+temp/
+*.tmp
+wp_migration_*$/
+
+# WordPress Migration Specific
+recieved_wp/
+backup-receiver/
+*.wpress
+
+# Log Files
+*.log
+logs/
+
+# OS Specific
+Thumbs.db
+.DS_Store
+*~
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
